@@ -1,0 +1,98 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Используем PostgreSQL как надежную БД для нашего продакшена
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 🛡 1. БЕЗОПАСНОСТЬ И ДОСТУПЫ (AUTH)
+// ==========================================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   // Зашифрованный пароль (bcrypt)
+  name         String?
+  role         Role     @default(MANAGER)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN   // Полный доступ ко всей системе
+  MANAGER // Управление только контентом и точками
+}
+
+// ==========================================
+// 🏢 2. БИЗНЕС-ЛОГИКА (ТОЧКИ И ТВ)
+// ==========================================
+
+model Location {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+
+  devices   Device[] // На одной точке может быть много ТВ
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Device {
+  id                 String    @id @default(uuid())
+  shortId            String    @unique // Тот самый 6-значный визуальный код (напр. "A8K 2M9")
+  deviceSecret       String    @unique // КРИТИЧНО: Скрытый ключ авторизации от Android
+  name               String
+  status             String    @default("offline") // online | offline
+
+  ipAddress          String?
+  storageFree        Float?    // В гигабайтах
+  androidVersion     String?
+  screenRotation     Int       @default(0)
+  lastSeen           DateTime  @default(now())
+
+  // Связь с торговой точкой
+  locationId         String
+  location           Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  // Связь с плейлистом (Индивидуальный эфир)
+  assignedPlaylistId String?
+  assignedPlaylist   Playlist? @relation(fields: [assignedPlaylistId], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime  @default(now())
+}
+
+// ==========================================
+// 🎬 3. КОНТЕНТ (ПЛЕЙЛИСТЫ И ФАЙЛЫ)
+// ==========================================
+
+model Playlist {
+  id        String         @id @default(uuid())
+  name      String
+
+  devices   Device[]
+  items     PlaylistItem[] // Переименовали в PlaylistItem для синхронизации с Zustand
+
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model PlaylistItem {
+  id         String   @id @default(uuid())
+  type       String   // "image" | "video"
+  url        String   // Ссылка на файл
+  duration   Int      @default(10) // В секундах
+  name       String   // Имя файла
+  rotation   Int      @default(0)
+  orderIndex Int      @default(0) // Порядок файла (для drag-and-drop)
+
+  // Привязка к плейлисту
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+}

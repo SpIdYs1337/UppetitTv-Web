@@ -1,0 +1,14 @@
+{
+  "registeredDevices": {},
+  "devicesTelemetry": {
+    "RVC5LE": {
+      "shortId": "RVC5LE",
+      "deviceSecret": "8462d37b-5e2b-4436-8fc4-18131420e734",
+      "status": "online",
+      "ipAddress": "Неизвестно",
+      "storageFree": 0,
+      "androidVersion": "Неизвестно",
+      "lastSeen": "2026-08-20T19:33:48.524Z"
+    }
+  }
+}

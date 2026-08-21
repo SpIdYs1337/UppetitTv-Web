@@ -1,0 +1,52 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Location {
+  id      String   @id @default(uuid())
+  name    String
+  address String
+  devices Device[]
+}
+
+model Device {
+  id                 String    @id @default(uuid())
+  shortId            String    @unique // Тот самый 6-значный код ТВ
+  name               String
+  status             String    @default("offline")
+  ipAddress          String?
+  storageFree        Float?
+  androidVersion     String?
+  screenRotation     Int       @default(0)
+  
+  locationId         String
+  location           Location  @relation(fields: [locationId], references: [id])
+  
+  assignedPlaylistId String?
+  assignedPlaylist   Playlist? @relation(fields: [assignedPlaylistId], references: [id])
+}
+
+model Playlist {
+  id      String         @id @default(uuid())
+  name    String
+  devices Device[]
+  items   PlaylistItem[]
+}
+
+model PlaylistItem {
+  id         String   @id @default(uuid())
+  type       String   // "image" или "video"
+  url        String
+  duration   Int      // В секундах
+  rotation   Int      @default(0)
+  orderIndex Int      @default(0) // Для Drag-and-Drop сортировки
+  
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+}
