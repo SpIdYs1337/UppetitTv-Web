@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTvStore, type PlaylistItem } from '../store/tvStore';
-import { Image as ImageIcon, Clock, Trash2, MonitorPlay, UploadCloud, Plus, FileVideo, GripVertical } from 'lucide-react';
+import { Image as ImageIcon, Video, Clock, Trash2, MonitorPlay, UploadCloud, Plus, FileVideo, GripVertical } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -44,27 +44,41 @@ const SortableMediaItem = ({
         <GripVertical size={20} />
       </div>
 
-      <div className="w-16 h-16 bg-black rounded-lg overflow-hidden shrink-0 border border-[#2A2A2A]/50 pointer-events-none">
-        <img src={item.url} alt={item.name} className="w-full h-full object-cover opacity-90" />
+      <div className="w-16 h-16 bg-black rounded-lg overflow-hidden shrink-0 border border-[#2A2A2A]/50 pointer-events-none flex items-center justify-center">
+        {item.type === 'video' ? (
+          <Video size={24} className="text-gray-500" />
+        ) : (
+          <img src={item.url} alt={item.name} className="w-full h-full object-cover opacity-90" />
+        )}
       </div>
       
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm truncate">{item.name}</p>
         <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-          <span className="flex items-center gap-1"><ImageIcon size={12} /> Картинка</span>
+          <span className="flex items-center gap-1">
+            {item.type === 'video' ? <><Video size={12} /> Видео</> : <><ImageIcon size={12} /> Картинка</>}
+          </span>
         </div>
       </div>
       
-      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-        <Clock size={14} className="text-gray-500" />
-        <input 
-          type="number" 
-          value={item.duration}
-          onChange={(e) => updateMediaDuration(playlistId, item.id, Number(e.target.value))}
-          className="w-16 bg-black/40 border border-[#2A2A2A]/50 rounded px-2 py-1 text-sm text-center focus:border-[#EA580C] outline-none text-white transition-colors"
-        />
-        <span className="text-xs text-gray-500">сек</span>
-      </div>
+      {item.type === 'image' ? (
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+          <Clock size={14} className="text-gray-500" />
+          <input 
+            type="number" 
+            value={item.duration}
+            onChange={(e) => updateMediaDuration(playlistId, item.id, Number(e.target.value))}
+            className="w-16 bg-black/40 border border-[#2A2A2A]/50 rounded px-2 py-1 text-sm text-center focus:border-[#EA580C] outline-none text-white transition-colors"
+          />
+          <span className="text-xs text-gray-500">сек</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 mr-2">
+          <span className="text-xs font-medium text-blue-400 bg-blue-400/10 px-2 py-1 rounded border border-blue-400/20">
+            До конца
+          </span>
+        </div>
+      )}
 
       <button 
         onClick={(e) => { e.stopPropagation(); removeMediaFromPlaylist(playlistId, item.id); }}
@@ -114,18 +128,23 @@ export const Playlists = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isVideo = file.type.startsWith('video/');
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const newItem: PlaylistItem = {
         id: `item-${Date.now()}`,
         url: event.target?.result as string,
-        type: 'image',
-        duration: 10,
+        type: isVideo ? 'video' : 'image',
+        duration: isVideo ? 0 : 10,
         name: file.name
       };
       addMediaToPlaylist(activePlaylistId, newItem);
     };
     reader.readAsDataURL(file);
+    
+    // Сбрасываем input, чтобы можно было загрузить тот же файл еще раз при необходимости
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -202,8 +221,8 @@ export const Playlists = () => {
                   className="border-2 border-dashed border-[#2A2A2A]/50 bg-black/10 hover:border-[#EA580C]/50 hover:bg-[#EA580C]/5 rounded-xl p-6 flex flex-col items-center justify-center text-gray-500 hover:text-[#EA580C] cursor-pointer transition-all mt-4"
                 >
                   <UploadCloud size={32} className="mb-2" />
-                  <p className="text-sm font-medium">Добавить в плейлист</p>
-                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+                  <p className="text-sm font-medium">Добавить фото или видео</p>
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/mp4,video/webm" className="hidden" />
                 </div>
               </div>
             </>
@@ -234,9 +253,7 @@ export const Playlists = () => {
             </div>
           </div>
 
-          {/* ИСПРАВЛЕНИЕ: Заменили min-h-[300px] на min-h-75 */}
           <div className="flex-1 bg-[#141414]/60 backdrop-blur-xl rounded-3xl border border-[#2A2A2A]/50 shadow-2xl flex items-center justify-center p-4 min-h-75">
-            {/* ИСПРАВЛЕНИЕ: Заменили aspect-[9/16] на aspect-9/16 */}
             <div 
               className={`relative bg-black flex items-center justify-center overflow-hidden transition-all duration-500 ease-in-out border-4 border-[#2A2A2A] shadow-inner rounded-xl ${
                 previewRotation === 90 ? 'w-[55%] aspect-9/16' : 'w-full aspect-video'
@@ -246,11 +263,21 @@ export const Playlists = () => {
                 <h1 className="text-4xl font-black">UPPETIT</h1>
               </div>
               {activePreview ? (
-                <img 
-                  src={activePreview.url} 
-                  alt="Preview" 
-                  className="w-full h-full object-contain relative z-10" 
-                />
+                activePreview.type === 'video' ? (
+                  <video 
+                    src={activePreview.url} 
+                    autoPlay 
+                    muted 
+                    loop
+                    className="w-full h-full object-contain relative z-10" 
+                  />
+                ) : (
+                  <img 
+                    src={activePreview.url} 
+                    alt="Preview" 
+                    className="w-full h-full object-contain relative z-10" 
+                  />
+                )
               ) : (
                 <p className="relative z-10 text-gray-600 text-xs font-medium uppercase tracking-wider">Нет медиа</p>
               )}

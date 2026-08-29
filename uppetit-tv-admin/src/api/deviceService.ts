@@ -18,13 +18,9 @@ interface TvCommandManifest {
 const API_URL = 'http://localhost:3001';
 
 export const DeviceService = {
-  // НОВОЕ: Получение реальной телеметрии всех устройств с сервера
   fetchDevicesStatus: async (): Promise<Partial<Device>[] | null> => {
     try {
-      // ИСПРАВЛЕНИЕ: Жестко запрещаем браузеру кэшировать опрос (cache: 'no-store')
-      const response = await fetch(`${API_URL}/api/devices/status`, {
-        cache: 'no-store'
-      });
+      const response = await fetch(`${API_URL}/api/devices/status`, { cache: 'no-store' });
       const data = await response.json();
       if (data.success && Array.isArray(data.devices)) {
         return data.devices;
@@ -36,7 +32,6 @@ export const DeviceService = {
     }
   },
 
-  // НОВОЕ: Отправка команды на привязку телевизора
   pairDevice: async (shortId: string) => {
     try {
       const response = await fetch(`${API_URL}/api/devices/pair`, {
@@ -48,7 +43,6 @@ export const DeviceService = {
       if (!response.ok) throw new Error(result.message || 'Ошибка привязки');
       return result.device;
     } catch (error: any) {
-      console.error('[NETWORK] Ошибка привязке ТВ:', error);
       alert(error.message || 'Не удалось привязать ТВ');
       return null;
     }
@@ -68,22 +62,16 @@ export const DeviceService = {
       }))
     };
 
-    console.log(`[NETWORK] Отправка манифеста на ТВ ${device.shortId}...`);
-
     try {
       const response = await fetch(`${API_URL}/api/devices/${device.shortId}/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manifest)
       });
-
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Ошибка сети');
-      
-      console.log('[NETWORK] Успешно:', result);
       return true;
     } catch (error) {
-      console.error('[NETWORK] Ошибка при отправке на ТВ:', error);
       alert(`Не удалось отправить на ${device.name}. Возможно, телевизор не в сети.`);
       return false;
     }
@@ -94,49 +82,52 @@ export const DeviceService = {
       command: 'UNPAIR_DEVICE',
       device_id: shortId
     };
-
-    console.log(`[NETWORK] Отправка команды отвязки на ${shortId}...`);
-    
     try {
       const response = await fetch(`${API_URL}/api/devices/${shortId}/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manifest)
       });
-
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Ошибка сети');
-      
       return true;
     } catch (error) {
-      console.error('[NETWORK] Ошибка при отвязке:', error);
       return false;
     }
   },
 
-  // Новая функция: смена поворота экрана на устройстве
   setRotation: async (shortId: string, angle: 0|90|180|270) => {
-    const manifest: any = {
-      command: 'SET_ROTATION',
-      rotation: angle
-    };
-
-    console.log(`[NETWORK] Отправка SET_ROTATION=${angle} на ${shortId}...`);
-
+    const manifest: any = { command: 'SET_ROTATION', rotation: angle };
     try {
       const response = await fetch(`${API_URL}/api/devices/${shortId}/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manifest)
       });
-
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Ошибка сети');
       return true;
     } catch (error) {
-      console.error('[NETWORK] Ошибка при отправке SET_ROTATION:', error);
       alert('Не удалось отправить команду поворота. Устройство может быть оффлайн.');
       return false;
+    }
+  },
+
+  requestLogs: async (shortId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/${shortId}/request-logs`, { method: 'POST' });
+      return await response.json();
+    } catch (e) {
+      return { success: false };
+    }
+  },
+
+  fetchLogs: async (shortId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/${shortId}/logs`, { cache: 'no-store' });
+      return await response.json();
+    } catch (e) {
+      return { success: false };
     }
   }
 };
