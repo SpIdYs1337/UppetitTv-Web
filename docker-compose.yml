@@ -14,8 +14,7 @@ services:
   backend:
     build: ./uppetit-tv-backend
     restart: always
-    ports:
-      - "3001:3001"
+    # Бэкенд больше не торчит наружу, порты удалены
     environment:
       - DATABASE_URL=postgresql://admin:admin_password@db:5432/uppetit_db?schema=public
     depends_on:
@@ -26,6 +25,9 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl
     depends_on:
       - backend
 
