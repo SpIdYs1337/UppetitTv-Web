@@ -1,10 +1,10 @@
-// src/index.ts
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import multer from 'multer'; // Добавлен импорт Multer
 
 const app = express();
 
@@ -63,6 +63,23 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// --- НАСТРОЙКИ ЗАГРУЗКИ ФОНОВОГО ВИДЕО ---
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+app.use('/media', express.static(uploadDir));
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, 'background.mp4')
+});
+const upload = multer({ storage });
+
+app.post('/api/settings/background', upload.single('video'), (req, res) => {
+  res.json({ success: true, message: 'Фон обновлен', url: '/media/background.mp4' });
+});
+// -----------------------------------------
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -96,7 +113,6 @@ const sanitizeId = (id: string) => id.replace(/\s+/g, '').toUpperCase();
   }
 })();
 
-// HEARTBEAT INTERVAl
 const interval = setInterval(() => {
   wss.clients.forEach((ws: any) => {
     if (ws.isAlive === false) {

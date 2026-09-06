@@ -98,6 +98,9 @@ export const Playlists = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [previewRotation, setPreviewRotation] = useState<0 | 90>(0); 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Новый реф для загрузки фонового видео
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
 
   const activePlaylist = playlists.find(p => p.id === activePlaylistId);
   const activePreview = activePlaylist?.items[previewIndex] || null;
@@ -143,8 +146,35 @@ export const Playlists = () => {
     };
     reader.readAsDataURL(file);
     
-    // Сбрасываем input, чтобы можно было загрузить тот же файл еще раз при необходимости
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Функция для загрузки глобального фонового видео
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('video', file);
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${baseUrl}/api/settings/background`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        alert('Фоновое видео успешно обновлено!');
+      } else {
+        alert('Ошибка при сохранении видео.');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки фона', error);
+      alert('Ошибка при загрузке видео');
+    }
+
+    if (bgFileInputRef.current) bgFileInputRef.current.value = '';
   };
 
   return (
@@ -185,6 +215,24 @@ export const Playlists = () => {
                 <button onClick={(e) => { e.stopPropagation(); deletePlaylist(pl.id); }} className="text-gray-600 hover:text-red-400"><Trash2 size={16}/></button>
               </div>
             ))}
+          </div>
+
+          {/* Блок настройки фона */}
+          <div className="p-4 border-t border-[#2A2A2A]/50 bg-black/40">
+            <h3 className="font-bold mb-3 text-sm text-gray-400 uppercase tracking-wider">Глобальные настройки</h3>
+            <button
+              onClick={() => bgFileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 bg-[#2A2A2A] hover:bg-[#404040] border border-[#404040] text-white p-2 rounded-lg transition-colors text-sm"
+            >
+              <UploadCloud size={16} /> Обновить фон ТВ
+            </button>
+            <input 
+              type="file" 
+              ref={bgFileInputRef} 
+              onChange={handleBackgroundUpload} 
+              accept="video/mp4,video/webm" 
+              className="hidden" 
+            />
           </div>
         </div>
 
@@ -229,14 +277,12 @@ export const Playlists = () => {
           )}
         </div>
 
-        {/* Live Preview с умной рамкой телевизора */}
         <div className="lg:col-span-4 flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold flex items-center gap-2">
               <MonitorPlay size={18} className="text-[#EA580C]" /> Предпросмотр экрана
             </h3>
             
-            {/* Переключатель ориентации */}
             <div className="flex bg-black/40 rounded-lg p-1 border border-[#2A2A2A]/50">
               <button
                 onClick={() => setPreviewRotation(0)}
