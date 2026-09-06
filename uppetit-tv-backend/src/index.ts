@@ -60,8 +60,8 @@ try {
 }
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // --- НАСТРОЙКИ ЗАГРУЗКИ ФОНОВОГО ВИДЕО ---
 const uploadDir = path.join(__dirname, '../uploads');

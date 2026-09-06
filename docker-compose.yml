@@ -22,15 +22,17 @@ services:
       - db
 
   frontend:
-  build: ./uppetit-tv-admin
-  restart: always
-  ports:
-    - "80:80"
-    - "443:443"
-  volumes:
-    - /etc/letsencrypt:/etc/letsencrypt:ro
-  depends_on:
-    - backend
+    build: ./uppetit-tv-admin
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=uppetit-tv.ru
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

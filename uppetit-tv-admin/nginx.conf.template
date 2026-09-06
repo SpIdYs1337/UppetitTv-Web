@@ -1,7 +1,6 @@
 server {
     listen 80;
     server_name _;
-    # Принудительно отправляем всех на защищенное соединение
     return 301 https://$host$request_uri;
 }
 
@@ -9,14 +8,13 @@ server {
     listen 443 ssl;
     server_name _;
 
-    # Новые пути к официальным сертификатам Let's Encrypt
-    ssl_certificate /etc/letsencrypt/live/твой-домен.ru/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/твой-домен.ru/privkey.pem;
+    # Nginx подставит сюда реальный домен при запуске
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem;
 
     root /usr/share/nginx/html;
     index index.html;
 
-    # Отдача интерфейса админки
     location / {
         try_files $uri $uri/ /index.html;
     }
