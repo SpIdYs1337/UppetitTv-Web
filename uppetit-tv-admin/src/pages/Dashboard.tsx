@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTvStore } from '../store/tvStore';
 import { PairDeviceModal } from '../components/tv/PairDeviceModal';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -7,6 +7,27 @@ import {
   Layers, Plus, Trash2, CheckCircle2, AlertCircle, Monitor, RefreshCw, FileText 
 } from 'lucide-react';
 import { DeviceService } from '../api/deviceService';
+
+// Компонент парсинга и раскраски системных логов
+const LogViewer = ({ logs }: { logs: string }) => {
+  return (
+    <div className="bg-[#0A0A0A] p-4 rounded-xl border border-[#2A2A2A] h-96 overflow-y-auto w-full">
+      {logs ? (
+        logs.split('\n').map((line, i) => {
+          let colorClass = "text-gray-300"; 
+          if (line.includes("[ERROR]")) colorClass = "text-red-500 font-bold";
+          else if (line.includes("[NETWORK]")) colorClass = "text-teal-400";
+          else if (line.includes("[PLAYER]")) colorClass = "text-yellow-500";
+          else if (line.includes("[SYSTEM]")) colorClass = "text-gray-500";
+
+          return <div key={i} className={`font-mono text-xs mb-1 whitespace-pre-wrap ${colorClass}`}>{line}</div>;
+        })
+      ) : (
+        <div className="text-gray-600 text-sm text-center mt-10 animate-pulse">Ожидание логов от устройства...</div>
+      )}
+    </div>
+  );
+};
 
 export const Dashboard = () => {
   const { 
@@ -28,6 +49,7 @@ export const Dashboard = () => {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [currentLogs, setCurrentLogs] = useState('');
   const [pollingDevice, setPollingDevice] = useState<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isOnline = useNetworkStatus();
 
@@ -45,32 +67,38 @@ export const Dashboard = () => {
 
   const handleRequestLogs = async (shortId: string) => {
     setPollingDevice(shortId);
-    const req = await DeviceService.requestLogs(shortId);
+    setCurrentLogs('');
+    setLogModalOpen(true);
     
+    const req = await DeviceService.requestLogs(shortId);
     if (!req.success) {
-      alert('Не удалось запросить логи с устройства');
+      setCurrentLogs('[ERROR] Не удалось отправить команду запроса логов на устройство.');
       setPollingDevice(null);
       return;
     }
     
-    // Polling mechanism
-    const pollInterval = setInterval(async () => {
+    pollIntervalRef.current = setInterval(async () => {
       const res = await DeviceService.fetchLogs(shortId);
       if (res.success && res.logs) {
         setCurrentLogs(res.logs);
-        setLogModalOpen(true);
         setPollingDevice(null);
-        clearInterval(pollInterval);
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       }
     }, 3000);
     
-    // Fallback stop after 30 seconds
     setTimeout(() => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        if (!currentLogs) setCurrentLogs('[SYSTEM] Таймаут: устройство не прислало логи.');
         setPollingDevice(null);
       }
     }, 30000);
+  };
+
+  const closeLogModal = () => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    setLogModalOpen(false);
+    setPollingDevice(null);
   };
 
   const toggleLocation = (locId: string) => setCollapsedLocations(prev => ({ ...prev, [locId]: !prev[locId] }));
@@ -229,7 +257,7 @@ export const Dashboard = () => {
 
                               <div className="space-y-1.5 my-4 text-xs text-gray-400">
                                 <div className="flex justify-between"><span>IP-адрес:</span><span className="text-white font-mono">{device.ipAddress}</span></div>
-                                <div className="flex justify-between items-center"><span>Память:</span><span className="text-white">{typeof device.storageFree === 'number' ? device.storageFree.toFixed(1) : device.storageFree} ГБ свободно</span></div>
+                                <div className="flex justify-between"><span>Память:</span><span className="text-white">{typeof device.storageFree === 'number' ? device.storageFree.toFixed(1) : device.storageFree} ГБ свободно</span></div>
                                 <div className="flex justify-between"><span>Версия ОС:</span><span className="text-white">Android {device.androidVersion}</span></div>
                               </div>
 
@@ -259,12 +287,12 @@ export const Dashboard = () => {
                                 e.stopPropagation();
                                 if (assignedPl) {
                                   DeviceService.sendPlaylistToDevice(device, assignedPl, true);
-                                  alert(`Эфир отправлен на ${device.name}!`);
                                 } else {
                                   alert('Сначала назначьте плейлист устройству');
                                 }
                               }} className={`w-full text-xs font-medium py-2 rounded border transition-all flex items-center justify-center gap-2 ${isOnline ? 'bg-white/5 hover:bg-[#EA580C]/20 text-gray-300 hover:text-[#F97316] border-white/5 hover:border-[#EA580C]/30' : 'bg-red-500/10 text-red-500/50 border-red-500/20 cursor-not-allowed'}`}>
-                                <RefreshCw size={12} className={!isOnline ? "opacity-50" : ""} /> {isOnline ? 'Синхронизировать с ТВ' : 'Ожидание сети...'}
+                                <RefreshCw size={12} className={!isOnline ? "opacity-50" : ""} /> 
+                                {isOnline ? 'Синхронизировать с ТВ' : 'Ожидание сети...'}
                               </button>
 
                               <button disabled={!isOnline || pollingDevice === device.shortId} onClick={(e) => {
@@ -301,21 +329,18 @@ export const Dashboard = () => {
 
       <PairDeviceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
-      {/* MODAL ДЛЯ ЛОГОВ */}
+      {/* МОДАЛЬНОЕ ОКНО ЛОГОВ */}
       {logModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl w-full max-w-3xl h-[70vh] flex flex-col shadow-2xl">
-            <div className="p-5 border-b border-[#2A2A2A] flex justify-between items-center bg-black/40 rounded-t-2xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FileText className="text-blue-400" size={20} /> Системные логи ТВ</h3>
-              <button onClick={() => setLogModalOpen(false)} className="text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-1.5 rounded-lg">&times;</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-3xl bg-[#141414]/90 border border-[#2A2A2A] rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex justify-between items-center mb-4 border-b border-[#2A2A2A] pb-3">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><FileText size={20} className="text-blue-400"/> Системный журнал</h3>
+              <button onClick={closeLogModal} className="text-gray-500 hover:text-white text-2xl leading-none">&times;</button>
             </div>
-            <div className="p-4 flex-1 overflow-y-auto font-mono text-xs text-green-400 bg-black/90">
-              <pre className="whitespace-pre-wrap">{currentLogs}</pre>
-            </div>
+            <LogViewer logs={currentLogs} />
           </div>
         </div>
       )}
-
     </div>
   );
 };

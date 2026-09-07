@@ -1,4 +1,3 @@
-// src/api/deviceService.ts
 import type { Playlist, PlaylistItem, Device } from '../store/tvStore';
 
 interface TvCommandManifest {
@@ -15,7 +14,7 @@ interface TvCommandManifest {
   }>;
 }
 
-// Оставляем пустую строку для использования относительных путей Nginx
+// Используем пустую строку, чтобы Nginx сам подставлял текущий домен (решает ошибку 405)
 const API_URL = '';
 
 export const DeviceService = {
@@ -23,9 +22,7 @@ export const DeviceService = {
     try {
       const response = await fetch(`${API_URL}/api/devices/status`, { cache: 'no-store' });
       const data = await response.json();
-      if (data.success && Array.isArray(data.devices)) {
-        return data.devices;
-      }
+      if (data.success && Array.isArray(data.devices)) return data.devices;
       return null;
     } catch (error) {
       console.error('[NETWORK] Ошибка получения статусов устройств:', error);
@@ -89,8 +86,7 @@ export const DeviceService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manifest)
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Ошибка сети');
+      if (!response.ok) throw new Error('Ошибка сети');
       return true;
     } catch (error) {
       return false;
@@ -105,8 +101,7 @@ export const DeviceService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manifest)
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Ошибка сети');
+      if (!response.ok) throw new Error('Ошибка сети');
       return true;
     } catch (error) {
       alert('Не удалось отправить команду поворота. Устройство может быть оффлайн.');
