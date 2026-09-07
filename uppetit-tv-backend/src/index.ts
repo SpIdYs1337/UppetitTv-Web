@@ -4,7 +4,7 @@ import http from 'http';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
-import multer from 'multer'; // Добавлен импорт Multer
+import multer from 'multer';
 
 const app = express();
 
