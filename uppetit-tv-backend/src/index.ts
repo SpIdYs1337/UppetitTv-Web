@@ -197,13 +197,19 @@ wss.on('connection', (ws: any) => {
         }
 
         try { ws.send(JSON.stringify({ status: 'connected', device_id: tvId })); } catch (e) {}
-        return;
+        
+        // ВАЖНО: Удален return;, чтобы код перешел к обработке команд (например, LOGS_REPORT), 
+        // которые могут прийти в этом же JSON-пакете.
       }
 
       const tvId = currentTvId;
       if (!tvId) return;
 
       const type = data.type || data.event || data.messageType || data.event_type;
+      
+      // Если это был только пакет авторизации/пинга без команды - прерываем
+      if (!type) return;
+
       const payload = data.payload ?? data;
 
       switch ((type || '').toString()) {

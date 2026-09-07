@@ -124,7 +124,7 @@ export const Playlists = () => {
       <div className="flex justify-between items-end mb-6">
         <div><h2 className="text-3xl font-bold">Управление контентом</h2><p className="text-gray-400 mt-1">Создавайте плейлисты и загружайте медиа</p></div>
         <label className="bg-[#141414]/60 backdrop-blur-md hover:bg-[#2A2A2A] text-white font-semibold py-2.5 px-6 rounded-xl transition-colors flex items-center gap-2 border border-[#2A2A2A] cursor-pointer">
-          <Video size={18} /> Обновить фон ТВ
+          <UploadCloud size={18} /> Обновить фон ТВ
           <input type="file" ref={bgFileInputRef} accept="video/mp4,video/webm" onChange={handleBackgroundUpload} className="hidden" />
         </label>
       </div>
