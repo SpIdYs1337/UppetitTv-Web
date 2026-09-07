@@ -15,7 +15,8 @@ interface TvCommandManifest {
   }>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Оставляем пустую строку для использования относительных путей Nginx
+const API_URL = '';
 
 export const DeviceService = {
   fetchDevicesStatus: async (): Promise<Partial<Device>[] | null> => {
